@@ -1,8 +1,5 @@
 package classfile
 
-
-
-
 type ConstantUtf8Info struct {
 	value string
 }
