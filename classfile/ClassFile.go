@@ -9,7 +9,7 @@ type ClassFile struct {
 	thisClass       uint16
 	superClass      uint16
 	interfacesCount uint16
-	interfaces      uint16
+	interfaces      []uint16
 	fieldsCount     uint16
 	fields          MemberInfo
 	methodsCount    uint16
@@ -22,8 +22,7 @@ type ClassFile struct {
 	Constant pool related data structure
  */
 type ConstantPool struct {
-	constantPoolCount uint16
-	constantInfoList  []ConstantClassInfo
+	constantInfoList  []ConstantInfoReader
 }
 
 /**

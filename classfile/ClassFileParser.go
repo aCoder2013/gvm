@@ -41,7 +41,9 @@ func Parse(data []byte) *ClassFile {
 	parseMagic(&classFile, &classFileReader)
 	parseVersion(&classFileReader, &classFile)
 	parseConstantPool(&classFileReader, &classFile)
-	parseAccessFlag(&classFileReader, &classFile)
+	parseMetadata(&classFileReader, &classFile)
+	parseInterface(&classFileReader, &classFile)
+	//todo :field、method、attribute
 	return &classFile
 }
 
@@ -70,24 +72,36 @@ func parseConstantPool(classFileReader *ClassFileReader, classFile *ClassFile) {
 		constantInfo.ReadInfo(classFileReader, classFile)
 		constantInfoList[i] = constantInfo
 	}
-	fmt.Println(constantInfoList)
+	classFile.constantPool = ConstantPool{constantInfoList}
 }
 
-func parseAccessFlag(reader *ClassFileReader, classFile *ClassFile) {
+func parseMetadata(reader *ClassFileReader, classFile *ClassFile) {
 	access_flags := reader.ReadUint16()
 	classFile.accessFlags = access_flags
 	if has_illegal_visibility(access_flags) {
 		panic("Illegal visibility of class")
 	}
+	classFile.thisClass = reader.ReadUint16()
+	classFile.superClass = reader.ReadUint16()
+}
+
+func parseInterface(reader *ClassFileReader, classFile *ClassFile) {
+	length := int(reader.ReadUint16())
+	fmt.Println(length)
+	interfaces := make([]uint16, length)
+	for i := 0; i < length; i++ {
+		interfaces[i] = reader.ReadUint16()
+	}
+	classFile.interfaces = interfaces
 }
 
 func has_illegal_visibility(accessFlag uint16) bool {
-	is_public := (accessFlag & JVM_ACC_PUBLIC) != 0
-	is_protected := (accessFlag & JVM_ACC_PROTECTED) != 0
-	is_private := (accessFlag & JVM_ACC_PRIVATE) != 0
-	return (is_public && is_protected) ||
-		(is_public && is_private) ||
-		(is_protected && is_private)
+	isPublic := (accessFlag & JVM_ACC_PUBLIC) != 0
+	isProtected := (accessFlag & JVM_ACC_PROTECTED) != 0
+	isPrivate := (accessFlag & JVM_ACC_PRIVATE) != 0
+	return (isPublic && isProtected) ||
+		(isPublic && isPrivate) ||
+		(isProtected && isPrivate)
 }
 
 func getConstantInfoByTag(classFileReader *ClassFileReader) ConstantInfoReader {
