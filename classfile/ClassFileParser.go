@@ -35,7 +35,7 @@ const (
 	JVM_ACC_ENUM         = 0x4000 /* field is declared as element of enum */
 )
 
-func Parse(data []byte) *ClassFile {
+func Parse(className string, data []byte) *ClassFile {
 	classFile := ClassFile{}
 	classFileReader := ClassFileReader{data}
 	parseMagic(&classFile, &classFileReader)
@@ -43,7 +43,9 @@ func Parse(data []byte) *ClassFile {
 	parseConstantPool(&classFileReader, &classFile)
 	parseMetadata(&classFileReader, &classFile)
 	parseInterface(&classFileReader, &classFile)
-	//todo :field、method、attribute
+	parseField(&classFileReader, &classFile)
+	parseMethod(&classFileReader, &classFile)
+	readAttributes(&classFileReader, &classFile.constantPool)
 	return &classFile
 }
 
@@ -83,16 +85,47 @@ func parseMetadata(reader *ClassFileReader, classFile *ClassFile) {
 	}
 	classFile.thisClass = reader.ReadUint16()
 	classFile.superClass = reader.ReadUint16()
+	if classFile.superClass == 0 {
+		if classFile.constantPool.getUtf8(int(classFile.superClass)) != "java.lang.Object" {
+			panic("Invalid superclass index " + string(classFile.superClass))
+		}
+	}
 }
 
 func parseInterface(reader *ClassFileReader, classFile *ClassFile) {
 	length := int(reader.ReadUint16())
-	fmt.Println(length)
 	interfaces := make([]uint16, length)
 	for i := 0; i < length; i++ {
 		interfaces[i] = reader.ReadUint16()
 	}
 	classFile.interfaces = interfaces
+}
+
+func parseField(reader *ClassFileReader, classFile *ClassFile) {
+	length := int(reader.ReadUint16())
+	memberInfoList := make([]MemberInfo, length)
+	for i := 0; i < length; i++ {
+		access_flags := reader.ReadUint16()
+		name_index := reader.ReadUint16()
+		descriptor_index := reader.ReadUint16()
+		attributeInfo := readAttributes(reader, &classFile.constantPool)
+		memberInfoList[i] = MemberInfo{accessFlags: access_flags, nameIndex: name_index, descriptorIndex: descriptor_index, attributes: attributeInfo}
+	}
+	classFile.fields = memberInfoList
+}
+
+func parseMethod(reader *ClassFileReader, classFile *ClassFile) {
+	length := int(reader.ReadUint16())
+	memberInfoList := make([]MemberInfo, length)
+	for i := 0; i < length; i++ {
+		accessFlags := reader.ReadUint16()
+		nameIndex := reader.ReadUint16()
+		descriptorIndex := reader.ReadUint16()
+		attributeInfo := readAttributes(reader, &classFile.constantPool)
+		memberInfoList[i] = MemberInfo{accessFlags: accessFlags, nameIndex: nameIndex, descriptorIndex: descriptorIndex, attributes: attributeInfo, cp: &classFile.constantPool}
+		fmt.Println(i, memberInfoList[i].String())
+	}
+	classFile.methods = memberInfoList
 }
 
 func has_illegal_visibility(accessFlag uint16) bool {

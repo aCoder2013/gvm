@@ -28,5 +28,5 @@ func startJVM(cmd *Cmd) {
 	if err != nil {
 		panic(err)
 	}
-	classfile.Parse(classData)
+	classfile.Parse(cmd.class, classData)
 }
